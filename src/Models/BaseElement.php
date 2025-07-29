@@ -535,11 +535,24 @@ JS
      */
     public function getContentForSearchIndex(): string
     {
-        // Strips tags but be sure there's a space between words.
-        $content = trim(strip_tags(str_replace('<', ' <', $this->forTemplate() ?? '') ?? ''));
-        // Allow projects to update indexable content of third-party elements.
-        $this->extend('updateContentForSearchIndex', $content);
-        return $content;
+        // Prevent infinite recursion by checking if we're already processing search content
+        static $processingSearchContent = false;
+        
+        if ($processingSearchContent) {
+            return '';
+        }
+        
+        $processingSearchContent = true;
+        
+        try {
+            // Strips tags but be sure there's a space between words.
+            $content = trim(strip_tags(str_replace('<', ' <', $this->forTemplate() ?? '') ?? ''));
+            // Allow projects to update indexable content of third-party elements.
+            $this->extend('updateContentForSearchIndex', $content);
+            return $content;
+        } finally {
+            $processingSearchContent = false;
+        }
     }
 
     /**
@@ -547,26 +560,39 @@ JS
      */
     public function getContentForCmsSearch(): string
     {
-        $fieldNames = $this->getTextualDatabaseFieldNames();
-        $excludedFieldNames = $this->getFieldNamesExcludedFromCmsSearch();
-        $contents = [];
-        foreach ($fieldNames as $fieldName) {
-            if (in_array($fieldName, $excludedFieldNames)) {
-                continue;
-            }
-            $contents[] = $this->$fieldName;
+        // Prevent infinite recursion by checking if we're already processing CMS search content
+        static $processingCmsSearchContent = false;
+        
+        if ($processingCmsSearchContent) {
+            return '';
         }
-        // Allow projects to update contents of third-party elements.
-        $this->extend('updateContentForCmsSearch', $contents);
+        
+        $processingCmsSearchContent = true;
+        
+        try {
+            $fieldNames = $this->getTextualDatabaseFieldNames();
+            $excludedFieldNames = $this->getFieldNamesExcludedFromCmsSearch();
+            $contents = [];
+            foreach ($fieldNames as $fieldName) {
+                if (in_array($fieldName, $excludedFieldNames)) {
+                    continue;
+                }
+                $contents[] = $this->$fieldName;
+            }
+            // Allow projects to update contents of third-party elements.
+            $this->extend('updateContentForCmsSearch', $contents);
 
-        // Use |#| to delimit different fields rather than space so that you don't
-        // accidentally join results of two columns that are next to each other in a table
-        $content = implode('|#|', array_filter($contents));
+            // Use |#| to delimit different fields rather than space so that you don't
+            // accidentally join results of two columns that are next to each other in a table
+            $content = implode('|#|', array_filter($contents));
 
-        // Strips tags and be sure there's a space between words.
-        $content = trim(strip_tags(str_replace('<', ' <', $content)));
+            // Strips tags and be sure there's a space between words.
+            $content = trim(strip_tags(str_replace('<', ' <', $content)));
 
-        return $content;
+            return $content;
+        } finally {
+            $processingCmsSearchContent = false;
+        }
     }
 
     /**
@@ -604,13 +630,26 @@ JS
      */
     public function forTemplate($holder = true)
     {
-        $templates = $this->getRenderTemplates();
-
-        if ($templates) {
-            return $this->renderWith($templates);
+        // Prevent infinite recursion by checking if we're already rendering templates
+        static $renderingTemplate = false;
+        
+        if ($renderingTemplate) {
+            return '';
         }
+        
+        $renderingTemplate = true;
+        
+        try {
+            $templates = $this->getRenderTemplates();
 
-        return null;
+            if ($templates) {
+                return $this->renderWith($templates);
+            }
+
+            return null;
+        } finally {
+            $renderingTemplate = false;
+        }
     }
 
     /**

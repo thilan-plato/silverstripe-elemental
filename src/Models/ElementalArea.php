@@ -96,7 +96,20 @@ class ElementalArea extends DataObject
      */
     public function forTemplate()
     {
-        return $this->renderWith(static::class);
+        // Prevent infinite recursion by checking if we're already rendering templates
+        static $renderingTemplate = false;
+        
+        if ($renderingTemplate) {
+            return DBField::create_field('HTMLText', '');
+        }
+        
+        $renderingTemplate = true;
+        
+        try {
+            return $this->renderWith(static::class);
+        } finally {
+            $renderingTemplate = false;
+        }
     }
 
     /**

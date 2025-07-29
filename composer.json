@@ -51,7 +51,11 @@
     },
     "config": {
         "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": true
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "composer/installers": true,
+            "silverstripe/recipe-plugin": true,
+            "phpstan/extension-installer": true,
+            "silverstripe/vendor-plugin": true
         }
     },
     "autoload": {
