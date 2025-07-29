@@ -378,8 +378,7 @@ class BaseElement extends DataObject implements CMSPreviewable
             if ($this->config()->get('displays_title_in_template')) {
                 $fields->replaceField(
                     'Title',
-                    TextCheckboxGroupField::create()
-                        ->setName('Title')
+                    TextCheckboxGroupField::create('Title')
                 );
             }
 
@@ -536,13 +535,11 @@ JS
     public function getContentForSearchIndex(): string
     {
         // Prevent infinite recursion by checking if we're already processing search content
-        static $processingSearchContent = false;
-        
-        if ($processingSearchContent) {
+        if (isset($this->cacheData['processing_search_content']) && $this->cacheData['processing_search_content']) {
             return '';
         }
         
-        $processingSearchContent = true;
+        $this->cacheData['processing_search_content'] = true;
         
         try {
             // Strips tags but be sure there's a space between words.
@@ -551,7 +548,7 @@ JS
             $this->extend('updateContentForSearchIndex', $content);
             return $content;
         } finally {
-            $processingSearchContent = false;
+            $this->cacheData['processing_search_content'] = false;
         }
     }
 
@@ -561,13 +558,11 @@ JS
     public function getContentForCmsSearch(): string
     {
         // Prevent infinite recursion by checking if we're already processing CMS search content
-        static $processingCmsSearchContent = false;
-        
-        if ($processingCmsSearchContent) {
+        if (isset($this->cacheData['processing_cms_search_content']) && $this->cacheData['processing_cms_search_content']) {
             return '';
         }
         
-        $processingCmsSearchContent = true;
+        $this->cacheData['processing_cms_search_content'] = true;
         
         try {
             $fieldNames = $this->getTextualDatabaseFieldNames();
@@ -591,7 +586,7 @@ JS
 
             return $content;
         } finally {
-            $processingCmsSearchContent = false;
+            $this->cacheData['processing_cms_search_content'] = false;
         }
     }
 
@@ -631,13 +626,11 @@ JS
     public function forTemplate($holder = true)
     {
         // Prevent infinite recursion by checking if we're already rendering templates
-        static $renderingTemplate = false;
-        
-        if ($renderingTemplate) {
+        if (isset($this->cacheData['rendering_template']) && $this->cacheData['rendering_template']) {
             return '';
         }
         
-        $renderingTemplate = true;
+        $this->cacheData['rendering_template'] = true;
         
         try {
             $templates = $this->getRenderTemplates();
@@ -648,7 +641,7 @@ JS
 
             return null;
         } finally {
-            $renderingTemplate = false;
+            $this->cacheData['rendering_template'] = false;
         }
     }
 

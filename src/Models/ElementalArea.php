@@ -97,18 +97,16 @@ class ElementalArea extends DataObject
     public function forTemplate()
     {
         // Prevent infinite recursion by checking if we're already rendering templates
-        static $renderingTemplate = false;
-        
-        if ($renderingTemplate) {
+        if (isset($this->cacheData['rendering_template']) && $this->cacheData['rendering_template']) {
             return DBField::create_field('HTMLText', '');
         }
         
-        $renderingTemplate = true;
+        $this->cacheData['rendering_template'] = true;
         
         try {
             return $this->renderWith(static::class);
         } finally {
-            $renderingTemplate = false;
+            $this->cacheData['rendering_template'] = false;
         }
     }
 
