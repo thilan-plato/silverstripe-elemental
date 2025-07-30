@@ -15,7 +15,7 @@ use SilverStripe\Forms\FormField;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\TabSet;
 use SilverStripe\ORM\DataObjectInterface;
-use Symbiote\GridFieldExtensions\GridFieldAddNewMultiClass;
+// use Symbiote\GridFieldExtensions\GridFieldAddNewMultiClass;
 use SilverStripe\Forms\GridField\GridFieldDetailForm;
 use SilverStripe\Forms\GridField\GridFieldDetailForm_ItemRequest;
 
@@ -54,19 +54,30 @@ class ElementalAreaField extends GridField
 
         $config = new ElementalAreaConfig();
 
+        // Temporarily disable GridFieldAddNewMultiClass to avoid template errors
+        // TODO: Re-enable when template issues are resolved
+        /*
         if (!empty($blockTypes)) {
             try {
-                /** @var GridFieldAddNewMultiClass $adder */
-                $adder = Injector::inst()->create(GridFieldAddNewMultiClass::class);
-                $adder->setClasses($blockTypes);
-                $config->addComponent($adder);
+                // Check if the class exists and can be instantiated
+                if (class_exists(GridFieldAddNewMultiClass::class)) {
+                    $adder = Injector::inst()->create(GridFieldAddNewMultiClass::class);
+                    $adder->setClasses($blockTypes);
+                    $config->addComponent($adder);
+                } else {
+                    error_log('GridFieldAddNewMultiClass class not found');
+                }
             } catch (\Exception $e) {
-                // If GridFieldAddNewMultiClass is not available or has template issues,
-                // fall back to a simple add button without multi-class selection
-                // This prevents the template error from breaking the CMS
                 error_log('GridFieldAddNewMultiClass not available: ' . $e->getMessage());
+                $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
             }
+        } else {
+            $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
         }
+        */
+        
+        // Use simple add button for now to avoid template errors
+        $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
 
         // By default, no need for a title on the editor. If there is more than one area then use `setTitle` to describe
         parent::__construct($name, '', $area->Elements(), $config);
