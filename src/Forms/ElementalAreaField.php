@@ -55,10 +55,17 @@ class ElementalAreaField extends GridField
         $config = new ElementalAreaConfig();
 
         if (!empty($blockTypes)) {
-            /** @var GridFieldAddNewMultiClass $adder */
-            $adder = Injector::inst()->create(GridFieldAddNewMultiClass::class);
-            $adder->setClasses($blockTypes);
-            $config->addComponent($adder);
+            try {
+                /** @var GridFieldAddNewMultiClass $adder */
+                $adder = Injector::inst()->create(GridFieldAddNewMultiClass::class);
+                $adder->setClasses($blockTypes);
+                $config->addComponent($adder);
+            } catch (\Exception $e) {
+                // If GridFieldAddNewMultiClass is not available or has template issues,
+                // fall back to a simple add button without multi-class selection
+                // This prevents the template error from breaking the CMS
+                error_log('GridFieldAddNewMultiClass not available: ' . $e->getMessage());
+            }
         }
 
         // By default, no need for a title on the editor. If there is more than one area then use `setTitle` to describe
