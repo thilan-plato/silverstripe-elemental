@@ -39,6 +39,11 @@ class ElementalAreaField extends GridField
     protected $modelClassName = BaseElement::class;
 
     /**
+     * @var array $recursionGuards
+     */
+    protected $recursionGuards = [];
+
+    /**
      * @param string $name
      * @param ElementalArea $area
      * @param string[] $blockTypes
@@ -104,33 +109,51 @@ class ElementalAreaField extends GridField
     public function FieldHolder($properties = array())
     {
         // Prevent infinite recursion during template rendering
-        if (isset($this->cacheData['rendering_field_holder']) && $this->cacheData['rendering_field_holder']) {
+        if (isset($this->recursionGuards['rendering_field_holder']) && $this->recursionGuards['rendering_field_holder']) {
             return parent::FieldHolder($properties);
         }
         
-        $this->cacheData['rendering_field_holder'] = true;
+        $this->recursionGuards['rendering_field_holder'] = true;
         
         try {
             $context = $this;
 
             if (count($properties ?? [])) {
-                $context = $this->customise($properties);
+                // Prevent infinite recursion during customisation
+                if (!isset($this->recursionGuards['customising_field_holder'])) {
+                    $this->recursionGuards['customising_field_holder'] = true;
+                    try {
+                        $context = $this->customise($properties);
+                    } finally {
+                        $this->recursionGuards['customising_field_holder'] = false;
+                    }
+                }
             }
 
-            return $context->renderWith($this->getFieldHolderTemplates());
+            // Prevent infinite recursion during template rendering
+            if (!isset($this->recursionGuards['rendering_with_templates'])) {
+                $this->recursionGuards['rendering_with_templates'] = true;
+                try {
+                    return $context->renderWith($this->getFieldHolderTemplates());
+                } finally {
+                    $this->recursionGuards['rendering_with_templates'] = false;
+                }
+            } else {
+                return parent::FieldHolder($properties);
+            }
         } finally {
-            $this->cacheData['rendering_field_holder'] = false;
+            $this->recursionGuards['rendering_field_holder'] = false;
         }
     }
 
     public function getSchemaDataDefaults()
     {
         // Prevent infinite recursion during template compilation
-        if (isset($this->cacheData['processing_schema_data']) && $this->cacheData['processing_schema_data']) {
+        if (isset($this->recursionGuards['processing_schema_data']) && $this->recursionGuards['processing_schema_data']) {
             return parent::getSchemaDataDefaults();
         }
         
-        $this->cacheData['processing_schema_data'] = true;
+        $this->recursionGuards['processing_schema_data'] = true;
         
         try {
             $schemaData = parent::getSchemaDataDefaults();
@@ -145,7 +168,7 @@ class ElementalAreaField extends GridField
 
             return $schemaData;
         } finally {
-            $this->cacheData['processing_schema_data'] = false;
+            $this->recursionGuards['processing_schema_data'] = false;
         }
     }
 
@@ -160,11 +183,11 @@ class ElementalAreaField extends GridField
     {
         return function (BaseElement $element) {
             // Prevent infinite recursion when processing elements
-            if (isset($this->cacheData['processing_element_' . $element->ID]) && $this->cacheData['processing_element_' . $element->ID]) {
+            if (isset($this->recursionGuards['processing_element_' . $element->ID]) && $this->recursionGuards['processing_element_' . $element->ID]) {
                 return FieldGroup::create()->setName('Element' . $element->ID);
             }
             
-            $this->cacheData['processing_element_' . $element->ID] = true;
+            $this->recursionGuards['processing_element_' . $element->ID] = true;
             
             try {
                 $parentName = 'Element' . $element->ID;
@@ -205,7 +228,7 @@ class ElementalAreaField extends GridField
 
                 return $elementGroup;
             } finally {
-                $this->cacheData['processing_element_' . $element->ID] = false;
+                $this->recursionGuards['processing_element_' . $element->ID] = false;
             }
         };
     }
