@@ -1,3 +1,3 @@
-<div $AttributesHTML data-schema="$SchemaData.JSON">
+<div $AttributesHTML>
     <%-- Field is rendered by React components --%>
 </div>

@@ -204,84 +204,95 @@ class ElementalArea extends DataObject
      */
     public function getOwnerPage()
     {
-        // You can't find the owner page of a area that hasn't been save yet
-        if (!$this->isInDB()) {
+        // Prevent infinite recursion during template compilation
+        if (isset($this->cacheData['processing_owner_page']) && $this->cacheData['processing_owner_page']) {
             return null;
         }
-
-        // Allow for repeated calls to read from cache
-        $cacheKey = 'owner_page_'. Versioned::get_reading_mode();
-
-        if (isset($this->cacheData[$cacheKey])) {
-            return $this->cacheData[$cacheKey];
-        }
-
-        if ($this->OwnerClassName && ClassInfo::exists($this->OwnerClassName)) {
-            $class = $this->OwnerClassName;
-            $instance = Injector::inst()->get($class);
-            if (!ClassInfo::hasMethod($instance, 'getElementalRelations')) {
+        
+        $this->cacheData['processing_owner_page'] = true;
+        
+        try {
+            // You can't find the owner page of a area that hasn't been save yet
+            if (!$this->isInDB()) {
                 return null;
             }
-            $elementalAreaRelations = $instance->getElementalRelations();
 
-            foreach ($elementalAreaRelations as $eaRelationship) {
-                $areaID = $eaRelationship . 'ID';
+            // Allow for repeated calls to read from cache
+            $cacheKey = 'owner_page_'. Versioned::get_reading_mode();
 
-                $table = DataObject::getSchema()->tableForField($class, $areaID);
-                $baseTable = DataObject::getSchema()->baseDataTable($class);
-                $page = DataObject::get_one($class, [
-                    "\"{$table}\".\"{$areaID}\" = ?" => $this->ID,
-                    "\"{$baseTable}\".\"ClassName\" = ?" => $class
-                ]);
+            if (isset($this->cacheData[$cacheKey])) {
+                return $this->cacheData[$cacheKey];
+            }
+
+            if ($this->OwnerClassName && ClassInfo::exists($this->OwnerClassName)) {
+                $class = $this->OwnerClassName;
+                $instance = Injector::inst()->get($class);
+                if (!ClassInfo::hasMethod($instance, 'getElementalRelations')) {
+                    return null;
+                }
+                $elementalAreaRelations = $instance->getElementalRelations();
+
+                foreach ($elementalAreaRelations as $eaRelationship) {
+                    $areaID = $eaRelationship . 'ID';
+
+                    $table = DataObject::getSchema()->tableForField($class, $areaID);
+                    $baseTable = DataObject::getSchema()->baseDataTable($class);
+                    $page = DataObject::get_one($class, [
+                        "\"{$table}\".\"{$areaID}\" = ?" => $this->ID,
+                        "\"{$baseTable}\".\"ClassName\" = ?" => $class
+                    ]);
+
+                    if ($page) {
+                        $this->setOwnerPageCached($page);
+
+                        return $page;
+                    }
+                }
+            }
+
+            foreach ($this->supportedPageTypes() as $class) {
+                $instance = Injector::inst()->get($class);
+                if (!ClassInfo::hasMethod($instance, 'getElementalRelations')) {
+                    return null;
+                }
+
+                $areaIDFilters = [];
+                foreach ($instance->getElementalRelations() as $eaRelationship) {
+                    $areaIDFilters[$eaRelationship . 'ID'] = $this->ID;
+                }
+
+                try {
+                    $page = DataObject::get($class)->filterAny($areaIDFilters)->first();
+                } catch (\Exception $ex) {
+                    // Usually this is catching cases where test stubs from other modules are trying to be loaded
+                    // and failing in unit tests.
+                    if (in_array(TestOnly::class, class_implements($class))) {
+                        continue;
+                    }
+                    // Continue as normal...
+                    throw $ex;
+                }
 
                 if ($page) {
+                    if ($this->OwnerClassName !== $class) {
+                        $this->OwnerClassName = $class;
+
+                        // Avoid recursion: only write if it's already in the database
+                        if ($this->isInDB()) {
+                            $this->write();
+                        }
+                    }
+
                     $this->setOwnerPageCached($page);
 
                     return $page;
                 }
             }
+
+            return null;
+        } finally {
+            $this->cacheData['processing_owner_page'] = false;
         }
-
-        foreach ($this->supportedPageTypes() as $class) {
-            $instance = Injector::inst()->get($class);
-            if (!ClassInfo::hasMethod($instance, 'getElementalRelations')) {
-                return null;
-            }
-
-            $areaIDFilters = [];
-            foreach ($instance->getElementalRelations() as $eaRelationship) {
-                $areaIDFilters[$eaRelationship . 'ID'] = $this->ID;
-            }
-
-            try {
-                $page = DataObject::get($class)->filterAny($areaIDFilters)->first();
-            } catch (\Exception $ex) {
-                // Usually this is catching cases where test stubs from other modules are trying to be loaded
-                // and failing in unit tests.
-                if (in_array(TestOnly::class, class_implements($class))) {
-                    continue;
-                }
-                // Continue as normal...
-                throw $ex;
-            }
-
-            if ($page) {
-                if ($this->OwnerClassName !== $class) {
-                    $this->OwnerClassName = $class;
-
-                    // Avoid recursion: only write if it's already in the database
-                    if ($this->isInDB()) {
-                        $this->write();
-                    }
-                }
-
-                $this->setOwnerPageCached($page);
-
-                return $page;
-            }
-        }
-
-        return null;
     }
 
     /**

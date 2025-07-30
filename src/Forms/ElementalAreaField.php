@@ -103,28 +103,50 @@ class ElementalAreaField extends GridField
      */
     public function FieldHolder($properties = array())
     {
-        $context = $this;
-
-        if (count($properties ?? [])) {
-            $context = $this->customise($properties);
+        // Prevent infinite recursion during template rendering
+        if (isset($this->cacheData['rendering_field_holder']) && $this->cacheData['rendering_field_holder']) {
+            return parent::FieldHolder($properties);
         }
+        
+        $this->cacheData['rendering_field_holder'] = true;
+        
+        try {
+            $context = $this;
 
-        return $context->renderWith($this->getFieldHolderTemplates());
+            if (count($properties ?? [])) {
+                $context = $this->customise($properties);
+            }
+
+            return $context->renderWith($this->getFieldHolderTemplates());
+        } finally {
+            $this->cacheData['rendering_field_holder'] = false;
+        }
     }
 
     public function getSchemaDataDefaults()
     {
-        $schemaData = parent::getSchemaDataDefaults();
+        // Prevent infinite recursion during template compilation
+        if (isset($this->cacheData['processing_schema_data']) && $this->cacheData['processing_schema_data']) {
+            return parent::getSchemaDataDefaults();
+        }
+        
+        $this->cacheData['processing_schema_data'] = true;
+        
+        try {
+            $schemaData = parent::getSchemaDataDefaults();
 
-        $area = $this->getArea();
-        $pageId = ($area && ($page = $area->getOwnerPage())) ? $page->ID : null;
-        $schemaData['page-id'] = $pageId;
-        $schemaData['elemental-area-id'] = $area ? (int) $area->ID : null;
+            $area = $this->getArea();
+            $pageId = ($area && ($page = $area->getOwnerPage())) ? $page->ID : null;
+            $schemaData['page-id'] = $pageId;
+            $schemaData['elemental-area-id'] = $area ? (int) $area->ID : null;
 
-        $allowedTypes = $this->getTypes();
-        $schemaData['allowed-elements'] = array_keys($allowedTypes ?? []);
+            $allowedTypes = $this->getTypes();
+            $schemaData['allowed-elements'] = array_keys($allowedTypes ?? []);
 
-        return $schemaData;
+            return $schemaData;
+        } finally {
+            $this->cacheData['processing_schema_data'] = false;
+        }
     }
 
     /**
@@ -137,43 +159,54 @@ class ElementalAreaField extends GridField
     protected function getReadOnlyBlockReducer()
     {
         return function (BaseElement $element) {
-            $parentName = 'Element' . $element->ID;
-            $elementFields = $element->getCMSFields();
-
-            // Obtain highest impact fields for a summary (e.g. Title & Content)
-            foreach ($elementFields as $field) {
-                if (is_object($field) && $field instanceof TabSet) {
-                    // Assign the fields of the first Tab in the TabSet - most regularly 'Root.Main'
-                    $elementFields = $field->FieldList()->first()->FieldList();
-                    break;
-                }
+            // Prevent infinite recursion when processing elements
+            if (isset($this->cacheData['processing_element_' . $element->ID]) && $this->cacheData['processing_element_' . $element->ID]) {
+                return FieldGroup::create()->setName('Element' . $element->ID);
             }
+            
+            $this->cacheData['processing_element_' . $element->ID] = true;
+            
+            try {
+                $parentName = 'Element' . $element->ID;
+                $elementFields = $element->getCMSFields();
 
-            // Set values (before names don't match anymore)
-            $elementFields->setValues($element->getQueriedDatabaseFields());
+                // Obtain highest impact fields for a summary (e.g. Title & Content)
+                foreach ($elementFields as $field) {
+                    if (is_object($field) && $field instanceof TabSet) {
+                        // Assign the fields of the first Tab in the TabSet - most regularly 'Root.Main'
+                        $elementFields = $field->FieldList()->first()->FieldList();
+                        break;
+                    }
+                }
 
-            // Combine into an appropriately named group
-            $elementGroup = FieldGroup::create($elementFields);
-            $elementGroup->setForm($this->getForm());
-            $elementGroup->setName($parentName);
-            $elementGroup->addExtraClass('elemental-area__element--historic');
+                // Set values (before names don't match anymore)
+                $elementFields->setValues($element->getQueriedDatabaseFields());
 
-            // Also set the important data for the rendering Component
-            $elementGroup->setSchemaData([
-                'data' => [
-                    'ElementID' => $element->ID,
-                    'ElementType' => $element->getType(),
-                    'ElementIcon' => $element->config()->get('icon'),
-                    'ElementTitle' => $element->Title,
-                    'ElementEditLink' => Controller::join_links(
-                        // Always get the edit link for the block directly, not the in-line edit form if supported
-                        $element->CMSEditLink(true),
-                        '#Root_History'
-                    ),
-                ],
-            ]);
+                // Combine into an appropriately named group
+                $elementGroup = FieldGroup::create($elementFields);
+                $elementGroup->setForm($this->getForm());
+                $elementGroup->setName($parentName);
+                $elementGroup->addExtraClass('elemental-area__element--historic');
 
-            return $elementGroup;
+                // Also set the important data for the rendering Component
+                $elementGroup->setSchemaData([
+                    'data' => [
+                        'ElementID' => $element->ID,
+                        'ElementType' => $element->getType(),
+                        'ElementIcon' => $element->config()->get('icon'),
+                        'ElementTitle' => $element->Title,
+                        'ElementEditLink' => Controller::join_links(
+                            // Always get the edit link for the block directly, not the in-line edit form if supported
+                            $element->CMSEditLink(true),
+                            '#Root_History'
+                        ),
+                    ],
+                ]);
+
+                return $elementGroup;
+            } finally {
+                $this->cacheData['processing_element_' . $element->ID] = false;
+            }
         };
     }
 
