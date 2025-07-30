@@ -7,6 +7,8 @@
 
             <% if $Summary %>
                 <p>$Summary.RAW</p>
+            <% else %>
+                <p class="elemental-preview__no-summary">No preview available</p>
             <% end_if %>
         </div>
     </a>

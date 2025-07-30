@@ -1080,7 +1080,19 @@ JS
      */
     public function getSummary()
     {
-        return '';
+        // Provide a default summary based on available data
+        if ($this->Title) {
+            return $this->Title;
+        }
+        
+        // If no title, return the element type
+        $type = $this->getType();
+        if ($type) {
+            return $type . ' block';
+        }
+        
+        // Fallback to a generic description
+        return 'Content block';
     }
 
     /**
@@ -1203,14 +1215,20 @@ JS
     }
 
     /**
-     * @return \SilverStripe\ORM\FieldType\DBHTMLText
+     * @return DBHTMLText
      */
     public function getEditorPreview()
     {
-        $templates = $this->getRenderTemplates('_EditorPreview');
-        $templates[] = BaseElement::class . '_EditorPreview';
+        try {
+            $templates = $this->getRenderTemplates('_EditorPreview');
+            $templates[] = BaseElement::class . '_EditorPreview';
 
-        return $this->renderWith($templates);
+            return $this->renderWith($templates);
+        } catch (\Exception $e) {
+            // If template rendering fails, return a simple fallback
+            error_log('BaseElement getEditorPreview error: ' . $e->getMessage());
+            return DBField::create_field('HTMLText', '<div class="element-preview-fallback">' . $this->getSummary() . '</div>');
+        }
     }
 
     /**
