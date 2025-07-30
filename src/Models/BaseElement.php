@@ -1080,18 +1080,26 @@ JS
      */
     public function getSummary()
     {
+        // Debug: Log what data is available
+        error_log('BaseElement getSummary called for: ' . get_class($this) . ' (ID: ' . $this->ID . ')');
+        error_log('Title: ' . ($this->Title ?? 'null'));
+        error_log('Type: ' . ($this->getType() ?? 'null'));
+        
         // Provide a default summary based on available data
         if ($this->Title) {
+            error_log('Returning Title: ' . $this->Title);
             return $this->Title;
         }
         
         // If no title, return the element type
         $type = $this->getType();
         if ($type) {
+            error_log('Returning Type: ' . $type . ' block');
             return $type . ' block';
         }
         
         // Fallback to a generic description
+        error_log('Returning generic: Content block');
         return 'Content block';
     }
 
@@ -1138,12 +1146,16 @@ JS
      */
     protected function provideBlockSchema()
     {
+        $summary = $this->getSummary();
+        error_log('BaseElement provideBlockSchema called for: ' . get_class($this) . ' (ID: ' . $this->ID . ')');
+        error_log('Summary content: ' . $summary);
+        
         return [
             'typeName' => static::getGraphQLTypeName(),
             'actions' => [
                 'edit' => $this->getEditLink(),
             ],
-            'content' => $this->getSummary(),
+            'content' => $summary,
         ];
     }
 
