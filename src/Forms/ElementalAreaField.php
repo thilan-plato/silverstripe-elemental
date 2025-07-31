@@ -24,7 +24,7 @@ use SilverStripe\Forms\GridField\GridField_FormAction;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
 
-class ElementalAreaField extends GridField implements GridField_ActionProvider
+class ElementalAreaField extends GridField
 {
     /**
      * @var ElementalArea $area
@@ -294,18 +294,7 @@ class ElementalAreaField extends GridField implements GridField_ActionProvider
     }
 
     /**
-     * Get the list of actions that this GridField supports
-     *
-     * @param GridField $gridField
-     * @return array
-     */
-    public function getActions($gridField)
-    {
-        return ['add'];
-    }
-
-    /**
-     * Handle the actions
+     * Handle the actions for RequestHandler
      *
      * @param HTTPRequest $request
      * @param string $action
@@ -314,7 +303,9 @@ class ElementalAreaField extends GridField implements GridField_ActionProvider
     public function handleAction($request, $action)
     {
         if ($action === 'add') {
-            return $this->handleAddAction($request);
+            // Extract data from request
+            $data = $request->postVars();
+            return $this->handleAddAction($data);
         }
         
         return parent::handleAction($request, $action);
@@ -323,12 +314,12 @@ class ElementalAreaField extends GridField implements GridField_ActionProvider
     /**
      * Handle the add action
      *
-     * @param HTTPRequest $request
+     * @param array $data
      * @return HTTPResponse
      */
-    protected function handleAddAction($request)
+    protected function handleAddAction($data)
     {
-        $className = $request->postVar('ClassName');
+        $className = isset($data['ClassName']) ? $data['ClassName'] : null;
         
         if (!$className) {
             return new HTTPResponse('No class name provided', 400);
