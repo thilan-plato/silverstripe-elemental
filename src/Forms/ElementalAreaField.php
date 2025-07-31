@@ -126,41 +126,38 @@ class ElementalAreaField extends GridField
      */
     public function FieldHolder($properties = array())
     {
-        // Prevent infinite recursion during template rendering
-        if (isset($this->recursionGuards['rendering_field_holder']) && $this->recursionGuards['rendering_field_holder']) {
+        // Prevent infinite recursion
+        if (isset($this->recursionGuards['field_holder']) && $this->recursionGuards['field_holder']) {
             return parent::FieldHolder($properties);
         }
-        
-        $this->recursionGuards['rendering_field_holder'] = true;
-        
+        $this->recursionGuards['field_holder'] = true;
+
         try {
-            $context = $this;
+            $this->customise($properties);
 
-            if (count($properties ?? [])) {
-                // Prevent infinite recursion during customisation
-                if (!isset($this->recursionGuards['customising_field_holder'])) {
-                    $this->recursionGuards['customising_field_holder'] = true;
-                    try {
-                        $context = $this->customise($properties);
-                    } finally {
-                        $this->recursionGuards['customising_field_holder'] = false;
-                    }
-                }
-            }
-
-            // Prevent infinite recursion during template rendering
-            if (!isset($this->recursionGuards['rendering_with_templates'])) {
-                $this->recursionGuards['rendering_with_templates'] = true;
-                try {
-                    return $context->renderWith($this->getFieldHolderTemplates());
-                } finally {
-                    $this->recursionGuards['rendering_with_templates'] = false;
-                }
-            } else {
+            // Add additional recursion guards for customise and renderWith calls
+            if (isset($this->recursionGuards['customise']) && $this->recursionGuards['customise']) {
                 return parent::FieldHolder($properties);
             }
+            $this->recursionGuards['customise'] = true;
+
+            if (isset($this->recursionGuards['render_with']) && $this->recursionGuards['render_with']) {
+                return parent::FieldHolder($properties);
+            }
+            $this->recursionGuards['render_with'] = true;
+
+            try {
+                return $this->renderWith($this->getTemplates());
+            } catch (\Exception $e) {
+                // If template rendering fails, fall back to parent method
+                error_log('ElementalAreaField template rendering error: ' . $e->getMessage());
+                return parent::FieldHolder($properties);
+            } finally {
+                $this->recursionGuards['render_with'] = false;
+                $this->recursionGuards['customise'] = false;
+            }
         } finally {
-            $this->recursionGuards['rendering_field_holder'] = false;
+            $this->recursionGuards['field_holder'] = false;
         }
     }
 
