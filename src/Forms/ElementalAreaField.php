@@ -57,12 +57,7 @@ class ElementalAreaField extends GridField
         // Debug: Log what block types are being passed
         error_log('ElementalAreaField constructor - block types: ' . print_r($blockTypes, true));
 
-        // Temporarily disable GridFieldAddNewMultiClass to avoid template errors
-        // TODO: Re-enable when template issues are resolved
-        error_log('Using simple add button to avoid template errors');
-        $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
-        
-        // Re-enable GridFieldAddNewMultiClass to show block selection dropdown
+        // Use ElementalGridFieldAddNewMultiClass to show block selection popup
         if (!empty($blockTypes)) {
             try {
                 // Use our custom component that generates HTML directly without templates
