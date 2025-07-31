@@ -1080,26 +1080,18 @@ JS
      */
     public function getSummary()
     {
-        // Debug: Log what data is available
-        error_log('BaseElement getSummary called for: ' . get_class($this) . ' (ID: ' . $this->ID . ')');
-        error_log('Title: ' . ($this->Title ?? 'null'));
-        error_log('Type: ' . ($this->getType() ?? 'null'));
-        
         // Provide a default summary based on available data
         if ($this->Title) {
-            error_log('Returning Title: ' . $this->Title);
             return $this->Title;
         }
         
         // If no title, return the element type
         $type = $this->getType();
         if ($type) {
-            error_log('Returning Type: ' . $type . ' block');
             return $type . ' block';
         }
         
         // Fallback to a generic description
-        error_log('Returning generic: Content block');
         return 'Content block';
     }
 
@@ -1146,16 +1138,12 @@ JS
      */
     protected function provideBlockSchema()
     {
-        $summary = $this->getSummary();
-        error_log('BaseElement provideBlockSchema called for: ' . get_class($this) . ' (ID: ' . $this->ID . ')');
-        error_log('Summary content: ' . $summary);
-        
         return [
             'typeName' => static::getGraphQLTypeName(),
             'actions' => [
                 'edit' => $this->getEditLink(),
             ],
-            'content' => $summary,
+            'content' => $this->getSummary(),
         ];
     }
 
@@ -1356,5 +1344,45 @@ JS
     {
         $reorderer = Injector::inst()->create(ReorderElements::class, $this);
         $reorderer->publishSortOrder();
+    }
+
+    /**
+     * Disable versioning functionality to prevent template rendering errors
+     * 
+     * @return bool
+     */
+    public function hasVersionedExtension()
+    {
+        // Disable versioning for elements to prevent template errors
+        return false;
+    }
+
+    /**
+     * Safe template rendering with fallback for missing templates
+     * 
+     * @param string|array $templates
+     * @param array $data
+     * @return DBHTMLText
+     */
+    protected function safeRenderWith($templates, $data = [])
+    {
+        try {
+            return $this->renderWith($templates, $data);
+        } catch (\Exception $e) {
+            // Log the error but don't break the application
+            error_log('Template rendering error in ' . get_class($this) . ': ' . $e->getMessage());
+            
+            // Return a simple fallback HTML
+            $fallbackHtml = '<div class="element-fallback">';
+            if ($this->Title) {
+                $fallbackHtml .= '<h3>' . htmlspecialchars($this->Title) . '</h3>';
+            }
+            if ($this->getType()) {
+                $fallbackHtml .= '<p><strong>Type:</strong> ' . htmlspecialchars($this->getType()) . '</p>';
+            }
+            $fallbackHtml .= '</div>';
+            
+            return DBField::create_field('HTMLText', $fallbackHtml);
+        }
     }
 }

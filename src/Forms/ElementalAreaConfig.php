@@ -4,7 +4,6 @@ namespace DNADesign\Elemental\Forms;
 
 use SilverStripe\Forms\GridField\GridFieldConfig;
 use SilverStripe\Forms\GridField\GridFieldDeleteAction;
-use SilverStripe\Forms\GridField\GridFieldDetailForm;
 
 class ElementalAreaConfig extends GridFieldConfig
 {
@@ -13,7 +12,9 @@ class ElementalAreaConfig extends GridFieldConfig
         parent::__construct();
 
         $this->addComponent(new GridFieldDeleteAction(false));
-        $this->addComponent(new GridFieldDetailForm(null, false, false));
+        
+        // Use custom detail form without versioning to avoid template errors
+        $this->addComponent(new ElementalGridFieldDetailForm(null, false, false));
 
         $this->extend('updateConfig');
     }

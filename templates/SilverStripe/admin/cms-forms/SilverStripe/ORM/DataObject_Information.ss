@@ -1,4 +1,4 @@
-<%-- Simple template for DataObject_Information in default theme --%>
+<%-- Simple template for DataObject_Information in admin theme --%>
 <div class="data-object-information">
     <% if $Title %>
         <h3>$Title</h3>

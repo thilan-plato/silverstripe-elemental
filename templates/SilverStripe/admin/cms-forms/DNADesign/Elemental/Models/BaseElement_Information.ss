@@ -1,4 +1,4 @@
-<%-- Simple template for BaseElement_Information in default theme --%>
+<%-- Simple template for BaseElement_Information in admin theme --%>
 <div class="base-element-information">
     <% if $Title %>
         <h3>$Title</h3>
