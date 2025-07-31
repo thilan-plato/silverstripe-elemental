@@ -1231,10 +1231,16 @@ JS
      */
     public function getEditorPreview()
     {
-        $templates = $this->getRenderTemplates('_EditorPreview');
-        $templates[] = BaseElement::class . '_EditorPreview';
+        try {
+            $templates = $this->getRenderTemplates('_EditorPreview');
+            $templates[] = BaseElement::class . '_EditorPreview';
 
-        return $this->safeRenderWith($templates);
+            return $this->renderWith($templates);
+        } catch (\Exception $e) {
+            // If template rendering fails, return a simple fallback
+            error_log('BaseElement getEditorPreview error: ' . $e->getMessage());
+            return DBField::create_field('HTMLText', '<div class="element-preview-fallback">' . $this->getSummary() . '</div>');
+        }
     }
 
     /**
@@ -1350,34 +1356,5 @@ JS
     {
         $reorderer = Injector::inst()->create(ReorderElements::class, $this);
         $reorderer->publishSortOrder();
-    }
-
-    /**
-     * Safe template rendering with fallback for missing templates
-     * 
-     * @param string|array $templates
-     * @param array $data
-     * @return DBHTMLText
-     */
-    protected function safeRenderWith($templates, $data = [])
-    {
-        try {
-            return $this->renderWith($templates, $data);
-        } catch (\Exception $e) {
-            // Log the error but don't break the application
-            error_log('Template rendering error in ' . get_class($this) . ': ' . $e->getMessage());
-            
-            // Return a simple fallback HTML
-            $fallbackHtml = '<div class="element-fallback">';
-            if ($this->Title) {
-                $fallbackHtml .= '<h3>' . htmlspecialchars($this->Title) . '</h3>';
-            }
-            if ($this->getType()) {
-                $fallbackHtml .= '<p><strong>Type:</strong> ' . htmlspecialchars($this->getType()) . '</p>';
-            }
-            $fallbackHtml .= '</div>';
-            
-            return DBField::create_field('HTMLText', $fallbackHtml);
-        }
     }
 }
