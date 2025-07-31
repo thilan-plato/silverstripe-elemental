@@ -60,19 +60,13 @@ class ElementalAreaField extends GridField
         // Re-enable GridFieldAddNewMultiClass to show block selection dropdown
         if (!empty($blockTypes)) {
             try {
-                // Check if the class exists and can be instantiated
-                if (class_exists(GridFieldAddNewMultiClass::class)) {
-                    error_log('GridFieldAddNewMultiClass class exists, creating instance');
-                    $adder = Injector::inst()->create(GridFieldAddNewMultiClass::class);
-                    $adder->setClasses($blockTypes);
-                    $config->addComponent($adder);
-                    error_log('GridFieldAddNewMultiClass component added successfully');
-                } else {
-                    error_log('GridFieldAddNewMultiClass class not found, falling back to simple add button');
-                    $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
-                }
+                // Use our custom component that handles template rendering errors
+                $adder = Injector::inst()->create(ElementalGridFieldAddNewMultiClass::class);
+                $adder->setClasses($blockTypes);
+                $config->addComponent($adder);
+                error_log('ElementalGridFieldAddNewMultiClass component added successfully');
             } catch (\Exception $e) {
-                error_log('GridFieldAddNewMultiClass not available: ' . $e->getMessage());
+                error_log('ElementalGridFieldAddNewMultiClass not available: ' . $e->getMessage());
                 $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
             }
         } else {
