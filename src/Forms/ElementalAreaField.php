@@ -57,14 +57,30 @@ class ElementalAreaField extends GridField
         // Debug: Log what block types are being passed
         error_log('ElementalAreaField constructor - block types: ' . print_r($blockTypes, true));
 
+        // Temporarily disable GridFieldAddNewMultiClass to avoid template errors
+        // TODO: Re-enable when template issues are resolved
+        error_log('Using simple add button to avoid template errors');
+        $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
+        
+        /*
         // Re-enable GridFieldAddNewMultiClass to show block selection dropdown
         if (!empty($blockTypes)) {
             try {
                 // Use our custom component that handles template rendering errors
-                $adder = Injector::inst()->create(ElementalGridFieldAddNewMultiClass::class);
-                $adder->setClasses($blockTypes);
-                $config->addComponent($adder);
-                error_log('ElementalGridFieldAddNewMultiClass component added successfully');
+                error_log('Attempting to create ElementalGridFieldAddNewMultiClass');
+                if (class_exists(ElementalGridFieldAddNewMultiClass::class)) {
+                    error_log('ElementalGridFieldAddNewMultiClass class exists');
+                    $adder = Injector::inst()->create(ElementalGridFieldAddNewMultiClass::class);
+                    error_log('ElementalGridFieldAddNewMultiClass instance created: ' . get_class($adder));
+                    $adder->setClasses($blockTypes);
+                    $config->addComponent($adder);
+                    error_log('ElementalGridFieldAddNewMultiClass component added successfully');
+                } else {
+                    error_log('ElementalGridFieldAddNewMultiClass class not found, falling back to original');
+                    $adder = Injector::inst()->create(GridFieldAddNewMultiClass::class);
+                    $adder->setClasses($blockTypes);
+                    $config->addComponent($adder);
+                }
             } catch (\Exception $e) {
                 error_log('ElementalGridFieldAddNewMultiClass not available: ' . $e->getMessage());
                 $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
@@ -73,6 +89,7 @@ class ElementalAreaField extends GridField
             error_log('No block types provided, using simple add button');
             $config->addComponent(new \SilverStripe\Forms\GridField\GridFieldAddNewButton());
         }
+        */
 
         // By default, no need for a title on the editor. If there is more than one area then use `setTitle` to describe
         parent::__construct($name, '', $area->Elements(), $config);
