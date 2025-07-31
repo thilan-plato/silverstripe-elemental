@@ -45,4 +45,33 @@ class ElementalGridFieldDetailForm_ItemRequest extends GridFieldDetailForm_ItemR
         // For non-BaseElement records, use parent method
         return parent::getFormActions();
     }
+
+    /**
+     * Override to prevent template rendering errors
+     * 
+     * @return string
+     */
+    public function ItemEditForm()
+    {
+        $record = $this->getRecord();
+        
+        // If this is a BaseElement, provide a simple form without template rendering
+        if ($record instanceof BaseElement) {
+            try {
+                return parent::ItemEditForm();
+            } catch (\Exception $e) {
+                // If template rendering fails, return a simple fallback
+                error_log('ElementalGridFieldDetailForm_ItemRequest template error: ' . $e->getMessage());
+                
+                $form = $this->getForm();
+                $actions = $this->getFormActions();
+                $form->setActions($actions);
+                
+                return $form->forTemplate();
+            }
+        }
+        
+        // For non-BaseElement records, use parent method
+        return parent::ItemEditForm();
+    }
 } 
