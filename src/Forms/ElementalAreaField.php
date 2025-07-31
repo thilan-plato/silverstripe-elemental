@@ -18,8 +18,13 @@ use SilverStripe\ORM\DataObjectInterface;
 use Symbiote\GridFieldExtensions\GridFieldAddNewMultiClass;
 use SilverStripe\Forms\GridField\GridFieldDetailForm;
 use SilverStripe\Forms\GridField\GridFieldDetailForm_ItemRequest;
+use SilverStripe\Forms\GridField\GridField_ActionProvider;
+use SilverStripe\Forms\GridField\GridField_ActionMenu;
+use SilverStripe\Forms\GridField\GridField_FormAction;
+use SilverStripe\Control\HTTPRequest;
+use SilverStripe\Control\HTTPResponse;
 
-class ElementalAreaField extends GridField
+class ElementalAreaField extends GridField implements GridField_ActionProvider
 {
     /**
      * @var ElementalArea $area
@@ -286,5 +291,65 @@ class ElementalAreaField extends GridField
     {
         // Content comes through as a JSON encoded list through a hidden field.
         return $this->setValue(json_decode($value ?? '', true));
+    }
+
+    /**
+     * Get the list of actions that this GridField supports
+     *
+     * @param GridField $gridField
+     * @return array
+     */
+    public function getActions($gridField)
+    {
+        return ['add'];
+    }
+
+    /**
+     * Handle the actions
+     *
+     * @param HTTPRequest $request
+     * @param string $action
+     * @return HTTPResponse
+     */
+    public function handleAction($request, $action)
+    {
+        if ($action === 'add') {
+            return $this->handleAddAction($request);
+        }
+        
+        return parent::handleAction($request, $action);
+    }
+
+    /**
+     * Handle the add action
+     *
+     * @param HTTPRequest $request
+     * @return HTTPResponse
+     */
+    protected function handleAddAction($request)
+    {
+        $className = $request->postVar('ClassName');
+        
+        if (!$className) {
+            return new HTTPResponse('No class name provided', 400);
+        }
+
+        // Check if the class is allowed
+        $allowedTypes = $this->getTypes();
+        if (!isset($allowedTypes[$className])) {
+            return new HTTPResponse('Class not allowed', 403);
+        }
+
+        // Create the new element
+        $element = Injector::inst()->create($className);
+        $element->ParentID = $this->area->ID;
+        $element->write();
+
+        // Redirect back to the form
+        $controller = Controller::curr();
+        $request = $controller->getRequest();
+        $url = $request->getURL();
+        
+        return new HTTPResponse('', 302, ['Location' => $url]);
     }
 }
